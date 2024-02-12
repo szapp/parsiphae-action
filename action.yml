@@ -1,0 +1,87 @@
+name: Parsiphae
+description: Parser checks for Daedalus scripts
+inputs:
+  file:
+    description: File path of D file or SRC file
+    required: true
+  version:
+    description: Parsiphae version to use (branch, tag, or sha)
+    default: master
+  token:
+    description: Github authentication token
+    default: ${{ github.token }}
+  check_name:
+    description: Name of check run
+    default: Parsiphae
+  cache:
+    description: Cache Parsiphae built
+    default: true
+runs:
+  using: composite
+  steps:
+    - name: Prepare Parsiphae
+      run: |
+        mkdir -p .parsiphae-action-source
+        echo "$WORKSPACE/.parsiphae-action-source/target/release" >> $GITHUB_PATH
+        filepath=$(echo "$FILE_PATH" | sed -r 's/\\\+/\//g' | sed -r 's/^\.?\///')
+        echo "PARSIPHAE_FILEPATH=${filepath}" >> $GITHUB_ENV
+        echo "PARSIPHAE_VERSION=$VERSION" >> $GITHUB_ENV
+      shell: bash
+      env:
+        WORKSPACE: ${{ github.workspace }}
+        FILE_PATH: ${{ inputs.file }}
+        VERSION: ${{ inputs.version }}
+
+    - name: Check file input
+      id: ext
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs')
+          const { PARSIPHAE_FILEPATH: path } = process.env
+          const ext = path.replace(/^.*\.src$/i, 's').replace(/^.*\.d$/i, 'i')
+          if (!fs.existsSync(path))
+            core.setFailed(`File not found: '${path}'`)
+          else if (ext !== 's' && ext !== 'i')
+            core.setFailed(`Invalid file extension: '${path}'`)
+          else
+            core.setOutput('arg', ext)
+
+    - name: Cache Parsiphae
+      if: inputs.cache == 'true'
+      id: cache-parsiphae
+      uses: actions/cache@v4
+      with:
+        path: .parsiphae-action-source/target/release
+        key: ${{ runner.os }}-${{ inputs.version }}-parsiphae
+
+    - name: Clone Parsiphae
+      if: steps.cache-parsiphae.outputs.cache-hit != 'true'
+      uses: actions/checkout@v4
+      with:
+        repository: Lehona/Parsiphae
+        ref: ${{ inputs.version }}
+        path: .parsiphae-action-source
+
+    - name: Build Parsiphae
+      if: steps.cache-parsiphae.outputs.cache-hit != 'true'
+      run: |
+        cd .parsiphae-action-source
+        cargo build --release
+      shell: bash
+
+    - name: Run Parsiphae
+      run: |
+        parsiphae -$ARG "${PARSIPHAE_FILEPATH}" 2> .parsiphae-action.err > .parsiphae-action.out || true
+        exit 0
+      shell: bash
+      env:
+        ARG: ${{ steps.ext.outputs.arg }}
+
+    - name: Create Checks
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ inputs.token }}
+        script: |
+          const annotate = require('./annotate.js')
+          return await annotate(github, context, core, '${{ inputs.check_name }}')

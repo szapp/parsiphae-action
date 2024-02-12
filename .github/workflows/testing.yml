@@ -1,0 +1,18 @@
+name: test
+on:
+  push:
+
+permissions:
+  checks: write
+  contents: read
+
+jobs:
+  parsiphae:
+    name: Run syntax check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Parsiphae
+        uses: ./
+        with:
+          file: ./test.d
