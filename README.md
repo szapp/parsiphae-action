@@ -2,7 +2,23 @@
 
 [![test](https://github.com/szapp/parsiphae-action/actions/workflows/testing.yml/badge.svg)](https://github.com/szapp/parsiphae-action/actions/workflows/testing.yml)
 
-Github action for [Parsiphae](https://github.com/Lehona/Parsiphae), a WIP compiler for the Daedalus scripting language.
+Github action for [Parsiphae](https://github.com/Lehona/Parsiphae), a WIP compiler for the Daedalus scripting language, written by and maintained by [@Lehona](https://github.com/Lehona).
+
+## Checks
+
+Checks are added to commits and performed on pull requests.
+
+### Checks page
+
+![actions-checks](.github/screenshots/actions-checks.png)
+
+### Commit file and line annotations
+
+![commit-checks](.github/screenshots/commit-checks.png)
+
+### Pull request checks
+
+![pr-checks](.github/screenshots/pr-checks.png)
 
 ## Usage
 
@@ -36,22 +52,6 @@ jobs:
         with:
           file: _work/Data/Scripts/Content/Gothic.src
 ```
-
-## Checks
-
-Checks are added to commits and performed on pull requests.
-
-### Checks page
-
-![actions-checks](.github/screenshots/actions-checks.png)
-
-### Commit file and line annotations
-
-![commit-checks](.github/screenshots/commit-checks.png)
-
-### Pull request checks
-
-![pr-checks](.github/screenshots/pr-checks.png)
 
 ## Configuration
 
