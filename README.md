@@ -1,6 +1,7 @@
 # Parsiphae Action
 
 [![test](https://github.com/szapp/parsiphae-action/actions/workflows/testing.yml/badge.svg)](https://github.com/szapp/parsiphae-action/actions/workflows/testing.yml)
+[![marketplace](https://img.shields.io/github/v/release/szapp/parsiphae-action?logo=githubactions&logoColor=white&label=marketplace)](https://github.com/marketplace/actions/daedalus-parsiphae)
 
 Github action for [Parsiphae](https://github.com/Lehona/Parsiphae), a WIP compiler for the Daedalus scripting language, written by and maintained by [@Lehona](https://github.com/Lehona).
 
