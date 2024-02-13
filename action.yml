@@ -1,5 +1,6 @@
-name: Parsiphae
+name: Daedalus Parsiphae
 description: Parser checks for Daedalus scripts
+
 inputs:
   file:
     description: File path of D file or SRC file
@@ -16,6 +17,7 @@ inputs:
   cache:
     description: Cache Parsiphae built
     default: true
+
 runs:
   using: composite
   steps:
@@ -85,3 +87,7 @@ runs:
         script: |
           const annotate = require('./annotate.js')
           return await annotate(github, context, core, '${{ inputs.check_name }}')
+
+branding:
+  icon: check
+  color: green

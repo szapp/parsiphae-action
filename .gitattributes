@@ -1,0 +1,4 @@
+* text=auto eol=lf
+
+# Exclude test files from language stats
+*.[dD] linguist-detectable=false
