@@ -73,5 +73,5 @@ jobs:
 - `cache`:
   Cache the Parsiphae built in between workflow runs.
   This greatly increases speed of the check as Parsiphae is not cloned and re-built every time.
-  The cached executable is specific to the workflow runner OS and the Parsiphae version (see `version`) specified.  
+  The cached executable is specific to the workflow runner OS and the Parsiphae version.  
   Defaults to true

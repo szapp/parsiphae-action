@@ -7,7 +7,7 @@ import * as io from '@actions/io'
 import * as tc from '@actions/tool-cache'
 
 // Parsiphae version  (branch, tag, or sha)
-const parVer = 'master'
+const parVer = '5cfb63ab29df99073a9fcc551d42652bdb130c74'
 
 // File path patterns
 const regexPreDot = /^\.\//

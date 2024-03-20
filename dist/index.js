@@ -85103,7 +85103,7 @@ const glob = __importStar(__nccwpck_require__(8090));
 const io = __importStar(__nccwpck_require__(7436));
 const tc = __importStar(__nccwpck_require__(7784));
 // Parsiphae version  (branch, tag, or sha)
-const parVer = 'master';
+const parVer = '5cfb63ab29df99073a9fcc551d42652bdb130c74';
 // File path patterns
 const regexPreDot = /^\.\//;
 const regexWinSlash = /\\+/g;
