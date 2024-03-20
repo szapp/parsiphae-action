@@ -1,4 +1,4 @@
 * text=auto eol=lf
 
-# Exclude test files from language stats
+/dist/** -diff linguist-generated=true
 *.[dD] linguist-detectable=false

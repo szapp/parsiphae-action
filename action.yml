@@ -1,13 +1,14 @@
 name: Daedalus Parsiphae
 description: Parser checks for Daedalus scripts
 
+branding:
+  icon: check
+  color: green
+
 inputs:
   file:
-    description: File path of D file or SRC file
+    description: File path or pattern of D file(s) or SRC file(s)
     required: true
-  version:
-    description: Parsiphae version to use (branch, tag, or sha)
-    default: master
   token:
     description: Github authentication token
     default: ${{ github.token }}
@@ -19,156 +20,5 @@ inputs:
     default: true
 
 runs:
-  using: composite
-  steps:
-    - name: Prepare Parsiphae
-      run: |
-        mkdir -p .parsiphae-action-source
-        echo "$WORKSPACE/.parsiphae-action-source/target/release" >> $GITHUB_PATH
-        filepath=$(echo "$FILE_PATH" | sed -r 's/\\\+/\//g' | sed -r 's/^\.?\///')
-        echo "PARSIPHAE_FILEPATH=${filepath}" >> $GITHUB_ENV
-        echo "PARSIPHAE_VERSION=$VERSION" >> $GITHUB_ENV
-      shell: bash
-      env:
-        WORKSPACE: ${{ github.workspace }}
-        FILE_PATH: ${{ inputs.file }}
-        VERSION: ${{ inputs.version }}
-
-    - name: Check file input
-      id: ext
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const fs = require('fs')
-          const { PARSIPHAE_FILEPATH: path } = process.env
-          const ext = path.replace(/^.*\.src$/i, 's').replace(/^.*\.d$/i, 'i')
-          if (!fs.existsSync(path))
-            core.setFailed(`File not found: '${path}'`)
-          else if (ext !== 's' && ext !== 'i')
-            core.setFailed(`Invalid file extension: '${path}'`)
-          else
-            core.setOutput('arg', ext)
-
-    - name: Cache Parsiphae
-      if: inputs.cache == 'true'
-      id: cache-parsiphae
-      uses: actions/cache@v4
-      with:
-        path: .parsiphae-action-source/target/release
-        key: ${{ runner.os }}-${{ inputs.version }}-parsiphae
-
-    - name: Clone Parsiphae
-      if: steps.cache-parsiphae.outputs.cache-hit != 'true'
-      uses: actions/checkout@v4
-      with:
-        repository: Lehona/Parsiphae
-        ref: ${{ inputs.version }}
-        path: .parsiphae-action-source
-
-    - name: Build Parsiphae
-      if: steps.cache-parsiphae.outputs.cache-hit != 'true'
-      run: |
-        cd .parsiphae-action-source
-        cargo build --release
-      shell: bash
-
-    - name: Run Parsiphae
-      run: |
-        parsiphae -$ARG "${PARSIPHAE_FILEPATH}" 2> .parsiphae-action.err > .parsiphae-action.out || true
-        exit 0
-      shell: bash
-      env:
-        ARG: ${{ steps.ext.outputs.arg }}
-
-    - name: Create Checks
-      uses: actions/github-script@v7
-      with:
-        github-token: ${{ inputs.token }}
-        script: |
-          //const annotate = require('./annotate.js')
-          //return await annotate(github, context, core, '${{ inputs.check_name }}')
-
-          // Local files are not available when running the action
-          // So the script here instead
-          const checkName = '${{ inputs.check_name }}';
-
-          // Below is the contents of 'annotate.js'
-          const fs = require('fs');
-
-          // Patterns
-          const regexFile = new RegExp(/(?<=in file \").+(?=\")/);
-          const regexLine = new RegExp(/(?<=in line )[0-9]+/);
-          const regexMsg = new RegExp(/(?<=: ).+/);
-          const regexPreSlash = new RegExp(/^[\\|\/]+/);
-
-          // Extended inputs
-          const { PARSIPHAE_FILEPATH: srcfile, PARSIPHAE_VERSION: parVersion, GITHUB_WORKSPACE: workspace } = process.env
-
-          // Parsiphae report
-          const stdout = fs.readFileSync('.parsiphae-action.out', 'ascii');
-          const stderr = fs.readFileSync('.parsiphae-action.err', 'ascii');
-          const lines = stderr.split(/\r?\n/);
-
-          // Iterate over reported errors
-          const annotations = [];
-          lines.forEach((line) => {
-            if (!line.length)
-              return;
-            const linenum = +(line.match(regexLine) || ['0'])[0];
-            const message = (line.match(regexMsg) || ['invalid'])[0];
-            const path = (line.match(regexFile) || ['invalid'])[0];
-            const filename = core.toPosixPath(path.replace(/\\+/g, '\\').replace(workspace, '').replace(regexPreSlash, ''));
-            annotations.push({
-              path: filename,
-              start_line: linenum,
-              end_line: linenum,
-              annotation_level: 'failure',
-              message: message
-            });
-          });
-
-          // Construct detailed information
-          const pos = stdout.search(/Parsed |parsing took/);
-          let tree = stdout.substring(0, pos-1).trim();
-          if (tree) {
-            tree = `<details><summary>Summary</summary><pre>${tree}</pre></details>`;
-          }
-          const info = stdout.substring(pos);
-          const link = `https://github.com/Lehona/Parsiphae/tree/${parVersion}`;
-          const details = `
-          Parsiphae parsed \`${srcfile}\`.
-
-          ${tree}
-
-          ${info}
-
-          For more details on Parsiphae, see [Lehona/Parsiphae@${parVersion}](${link}).
-          `;
-
-          // Create Gitub check run
-          const numErr = annotations.length;
-          const { data: { details_url } } = await github.rest.checks.create({
-            ...context.repo,
-            name: checkName,
-            head_sha: context.sha,
-            started_at: new Date().toISOString(),
-            completed_at: new Date().toISOString(),
-            conclusion: numErr ? 'failure' : 'success',
-            output: {
-              title: `${numErr || 'No'} error${numErr != 1 ? 's' : ''}`,
-              summary: `Parsiphae found ${numErr || 'no'} syntax error${numErr != 1 ? 's' : ''}`,
-              text: details,
-              annotations: annotations
-            }
-          });
-
-          // Refer to check run results
-          const extraName = (checkName != 'Parsiphae') ? ' (' + checkName + ')' : ''
-          core.notice(`Find the detailed Parsiphae${extraName} results at ${details_url}`);
-
-          // Mark as always successful
-          return true;
-
-branding:
-  icon: check
-  color: green
+  using: node20
+  main: dist/index.js
