@@ -5,6 +5,8 @@ import * as github from '@actions/github'
 import * as glob from '@actions/glob'
 import * as io from '@actions/io'
 import * as tc from '@actions/tool-cache'
+import humanizeDuration from 'humanize-duration'
+import path from 'path'
 
 // Parsiphae version  (branch, tag, or sha)
 const parVer = '5cfb63ab29df99073a9fcc551d42652bdb130c74'
@@ -23,6 +25,7 @@ const regexFile = /(?<=in file ").+(?=")/
 const regexLine = /(?<=in line )[0-9]+/
 const regexMsg = /(?<=: ).+/
 const regexParsed = /Parsed |parsing took/
+const regexParsedFiles = /Parsed [0-9]+ files?/
 
 export async function run(): Promise<void> {
   try {
@@ -50,7 +53,7 @@ export async function run(): Promise<void> {
     core.endGroup()
 
     // Restore Parsiphae built from cache (if found)
-    let cacheKey = undefined
+    let cacheKey: string | undefined = undefined
     const primaryKey = `${runnerOs}-${runnerArch}-parsiphae-${parVer}`
     const cachePath = '.parsiphae-action-bin'
     if (doCache) {
@@ -89,29 +92,35 @@ export async function run(): Promise<void> {
     }
     core.addPath(cachePath)
 
-    // Record stdout and stderr for exec
-    let stdout = ''
-    let stderr: string[] = []
-    const execOpt: exec.ExecOptions = {
-      listeners: {
-        stdout: (data: Buffer): void => {
-          stdout += data.toString()
+    const getExecOpt = (): { execOpt: exec.ExecOptions; stdout: string[]; stderr: string[] } => {
+      const stdout: string[] = []
+      const stderr: string[] = []
+      const execOpt: exec.ExecOptions = {
+        listeners: {
+          stdout: (data: Buffer): void => {
+            stdout.push(data.toString())
+          },
+          errline: (str: string): void => {
+            /* istanbul ignore next */
+            stderr.push(str)
+          },
         },
-        errline: (str: string): void => {
-          stderr.push(str)
-        },
-      },
-      ignoreReturnCode: true,
-    }
-
-    // Windows does not provide new lines, disrupting the capture of stderr through errline,
-    // see https://github.com/actions/toolkit/issues/1313
-    /* istanbul ignore next */
-    if (process.platform === 'win32') {
-      delete execOpt.listeners?.errline
-      execOpt.listeners!.stderr = (data: Buffer): void => {
-        stderr.push(...data.toString().split(regexNL))
+        ignoreReturnCode: true,
       }
+
+      // Windows does not provide new lines, disrupting the capture of stderr through errline,
+      // see https://github.com/actions/toolkit/issues/1313
+      /* istanbul ignore next */
+      if (process.platform === 'win32') {
+        delete execOpt.listeners?.errline
+        execOpt.listeners!.stderr = (data: Buffer): void => {
+          // Avoid splitting lines in the middle of a message
+          const lines = data.toString().split(regexNL)
+          if (stderr.length) stderr[stderr.length - 1] += lines.shift() ?? ''
+          stderr.push(...lines)
+        }
+      }
+      return { execOpt, stdout, stderr }
     }
 
     // Get relative path
@@ -127,41 +136,46 @@ export async function run(): Promise<void> {
     // Prepare git
     const octokit = github.getOctokit(githubToken)
 
-    // Process input file(s)
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i]
-      const srcfile = stripWorkspace(file)
-      const extFlag = file.replace(regexExtSrc, 's').replace(regexExtD, 'i')
+    // Process input file(s) asynchronously
+    await Promise.all(
+      files.map(async (file, idx) => {
+        const srcfile = stripWorkspace(file)
+        const extFlag = file.replace(regexExtSrc, 's').replace(regexExtD, 'i')
 
-      await core.group(`Parse ${srcfile}`, async (): Promise<void> => {
-        stdout = ''
-        stderr = []
+        // Record stdout and stderr for exec
+        core.info(`Parse ${srcfile}`)
+        const startedAt = new Date() // For check suite
+        const startTime = performance.now() // For precise duration
+        const { execOpt, stdout, stderr } = getExecOpt()
         await exec.exec(exeName, [`-${extFlag}`, file], execOpt)
 
         // Iterate over reported errors
         const annotations: { path: string; start_line: number; end_line: number; annotation_level: 'failure'; message: string }[] = []
-        stderr.forEach((line) => {
-          if (!line.length) return
-          const linenum = +(line.match(regexLine) || ['0'])[0]
-          const message = (line.match(regexMsg) || ['invalid'])[0]
-          const path = (line.match(regexFile) || ['invalid'])[0]
-          const filename = stripWorkspace(path)
-          annotations.push({
-            path: filename,
-            start_line: linenum,
-            end_line: linenum,
-            annotation_level: 'failure',
-            message: message,
+        stderr
+          .filter((line) => line.startsWith('Error'))
+          .forEach((line) => {
+            const linenum = +(line.match(regexLine) || ['0'])[0]
+            const message = (line.match(regexMsg) || ['invalid'])[0]
+            const path = (line.match(regexFile) || ['invalid'])[0]
+            const filename = stripWorkspace(path)
+            annotations.push({
+              path: filename,
+              start_line: linenum,
+              end_line: linenum,
+              annotation_level: 'failure',
+              message: message,
+            })
           })
-        })
 
         // Construct detailed information
-        const pos = stdout.search(regexParsed)
-        let tree = stdout.substring(0, pos - 1).trim()
+        const stdoutStr = stdout.join('')
+        const pos = stdoutStr.search(regexParsed)
+        const numFilesParsed = +(stdoutStr.match(regexParsedFiles) || ['Parsed 1 file'])[0].split(' ')[1]
+        let tree = stdoutStr.substring(0, pos - 1).trim()
         if (tree) {
           tree = `<details><summary>Summary</summary><pre>${tree}</pre></details>`
         }
-        const info = stdout.substring(pos)
+        const info = stdoutStr.substring(pos)
         const link = `https://github.com/Lehona/Parsiphae/tree/${parVer}`
         const details = `Parsiphae parsed \`${srcfile}\`.
 
@@ -172,35 +186,61 @@ ${info}
 For more details on Parsiphae, see [Lehona/Parsiphae@${parVer}](${link}).`
 
         // Create Gitub check run
-        const checkRunName = numFiles > 1 ? `${checkName}: ${srcfile}` : checkName
+        const checkRunName = numFiles > 1 ? `${checkName}: ${path.basename(srcfile)}` : checkName
         const numErr = annotations.length
+        const duration = humanizeDuration(performance.now() - startTime, { round: true, largest: 2, units: ['m', 's', 'ms'] })
         const {
-          data: { details_url },
+          data: { id: checkId, details_url: checkUrl },
         } = await octokit.rest.checks.create({
           ...github.context.repo,
           name: checkRunName,
           head_sha: github.context.sha,
-          started_at: new Date().toISOString(),
+          started_at: startedAt.toISOString(),
           completed_at: new Date().toISOString(),
           conclusion: numErr ? 'failure' : 'success',
           output: {
             title: `${numErr || 'No'} error${numErr !== 1 ? 's' : ''}`,
-            summary: `Parsiphae found ${numErr || 'no'} syntax error${numErr !== 1 ? 's' : ''}`,
+            summary: `Parsiphae found ${numErr || 'no'} syntax error${numErr !== 1 ? 's' : ''} (${duration})`,
             text: details,
             annotations: annotations,
           },
         })
 
-        // Refer to check run results
-        let extraName = ''
-        if (checkName !== 'Parsiphae') {
-          extraName = ` (${checkRunName})`
-        } else if (checkName !== checkRunName) {
-          extraName = ` (${srcfile})`
-        }
-        core.notice(`Find the detailed Parsiphae${extraName} results at ${details_url}`)
+        // Add summary row
+        return { idx, srcfile, numErr, numFiles: numFilesParsed, duration, checkId, checkUrl: checkUrl ?? '' }
       })
-    }
+    )
+      .then(async (summary) => {
+        // Build summary
+        core.startGroup('Generate summary')
+        summary.sort((a, b) => a.idx - b.idx)
+        await core.summary
+          .addHeading(`${checkName} Results`)
+          .addTable([
+            [
+              { data: 'Test result 🔬', header: true },
+              { data: 'Source 📝', header: true },
+              { data: 'Errors ❌', header: true },
+              { data: 'Files #️', header: true },
+              { data: 'Duration ⏰ ', header: true },
+              { data: 'Details 📊', header: true },
+            ],
+            ...summary.map((s) => [
+              s.numErr > 0 ? '🔴 Fail' : '🟢 Pass',
+              path.basename(s.srcfile),
+              String(s.numErr),
+              String(s.numFiles),
+              s.duration,
+              `<a href="${s.checkUrl}">${s.checkId}</a>`,
+            ]),
+          ])
+          .write({ overwrite: false })
+        core.endGroup()
+      })
+      .catch((error) => {
+        /* istanbul ignore next */
+        throw error
+      })
   } catch (error) {
     const msg: string = error instanceof Error ? error.message : String(error)
     core.setFailed(msg)
