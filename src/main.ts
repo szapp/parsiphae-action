@@ -5,6 +5,7 @@ import * as github from '@actions/github'
 import * as glob from '@actions/glob'
 import * as io from '@actions/io'
 import * as tc from '@actions/tool-cache'
+import { workflow } from './cleanup'
 import humanizeDuration from 'humanize-duration'
 import path from 'path'
 
@@ -29,10 +30,13 @@ const regexParsedFiles = /Parsed [0-9]+ files?/
 
 export async function run(): Promise<void> {
   try {
+    // Clean up
+    if (await workflow()) return
+
     core.startGroup('Format inputs')
     const inputFile = core.getInput('file', { required: true })
     const githubToken = core.getInput('token')
-    const checkName = core.getInput('check_name')
+    const checkName = core.getInput('check-name')
     const doCache = core.getBooleanInput('cache')
     const { GITHUB_WORKSPACE: workspace, RUNNER_OS: runnerOs, RUNNER_ARCH: runnerArch } = process.env
     const exeName = process.platform === 'win32' ? 'parsiphae.exe' : 'parsiphae'
@@ -150,7 +154,14 @@ export async function run(): Promise<void> {
         await exec.exec(exeName, [`-${extFlag}`, file], execOpt)
 
         // Iterate over reported errors
-        const annotations: { path: string; start_line: number; end_line: number; annotation_level: 'failure'; message: string }[] = []
+        const annotations: {
+          path: string
+          start_line: number
+          end_line: number
+          annotation_level: 'failure'
+          message: string
+          title: string
+        }[] = []
         stderr
           .filter((line) => line.startsWith('Error'))
           .forEach((line) => {
@@ -164,6 +175,7 @@ export async function run(): Promise<void> {
               end_line: linenum,
               annotation_level: 'failure',
               message: message,
+              title: 'Syntax error', // Currently all errors are syntax errors
             })
           })
 
@@ -190,7 +202,7 @@ For more details on Parsiphae, see [Lehona/Parsiphae@${parVer}](${link}).`
         const numErr = annotations.length
         const duration = humanizeDuration(performance.now() - startTime, { round: true, largest: 2, units: ['m', 's', 'ms'] })
         const {
-          data: { id: checkId, details_url: checkUrl },
+          data: { id: checkId, html_url: checkUrl },
         } = await octokit.rest.checks.create({
           ...github.context.repo,
           name: checkRunName,

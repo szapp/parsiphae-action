@@ -1,6 +1,7 @@
 import * as core from '@actions/core'
 import * as cache from '@actions/cache'
 import * as main from '../src/main'
+import * as cleanup from '../src/cleanup'
 import path from 'path'
 import fs from 'fs'
 
@@ -33,11 +34,12 @@ let getBooleanInputMock: jest.SpiedFunction<typeof core.getBooleanInput>
 let setFailedMock: jest.SpiedFunction<typeof core.setFailed>
 let saveCacheMock: jest.SpiedFunction<typeof cache.saveCache>
 let restoreCacheMock: jest.SpiedFunction<typeof cache.restoreCache>
+let workflowMock: jest.SpiedFunction<typeof cleanup.workflow>
 jest.spyOn(core, 'startGroup').mockImplementation()
 jest.spyOn(core, 'endGroup').mockImplementation()
 
 // Mock the GitHub API
-const createCheckMock = jest.fn((_params) => ({ data: { details_url: 'https://example.com' } }))
+const createCheckMock = jest.fn((_params) => ({ data: { html_url: 'https://example.com' } }))
 jest.mock('@actions/github', () => {
   return {
     getOctokit: (_token: string) => {
@@ -68,6 +70,7 @@ describe('action', () => {
     setFailedMock = jest.spyOn(core, 'setFailed').mockImplementation()
     saveCacheMock = jest.spyOn(cache, 'saveCache').mockImplementation()
     restoreCacheMock = jest.spyOn(cache, 'restoreCache').mockImplementation()
+    workflowMock = jest.spyOn(cleanup, 'workflow').mockResolvedValue(false)
     fs.mkdirSync(tempPath, { recursive: true })
     fs.writeFileSync(stepSummaryPath, '')
   })
@@ -81,7 +84,7 @@ describe('action', () => {
       switch (name) {
         case 'file':
           return '__tests__/data/*.d'
-        case 'check_name':
+        case 'check-name':
           return 'Testing'
         case 'token':
           return 'token'
@@ -114,7 +117,14 @@ describe('action', () => {
         summary: expect.stringMatching(/^Parsiphae found 1 syntax error \([^)]*\)$/),
         text: expect.any(String),
         annotations: [
-          { annotation_level: 'failure', end_line: 3, message: 'Missing semicolon', path: '__tests__/data/fail.d', start_line: 3 },
+          {
+            annotation_level: 'failure',
+            end_line: 3,
+            title: 'Syntax error',
+            message: 'Missing semicolon',
+            path: '__tests__/data/fail.d',
+            start_line: 3,
+          },
         ],
       },
     }
@@ -138,6 +148,7 @@ describe('action', () => {
 
     await main.run()
     expect(runMock).toHaveReturned()
+    expect(workflowMock).toHaveBeenCalledTimes(1)
     expect(setFailedMock).not.toHaveBeenCalled()
     expect(restoreCacheMock).toHaveBeenNthCalledWith(1, [cacheKey], primaryKey)
     expect(saveCacheMock).toHaveBeenNthCalledWith(1, [cacheKey], primaryKey)
@@ -180,5 +191,17 @@ describe('action', () => {
     await main.run()
     expect(runMock).toHaveReturned()
     expect(setFailedMock).toHaveBeenNthCalledWith(1, `Invalid file extension of '${fullPath}'`)
+  })
+
+  it('returns early on check_run', async () => {
+    workflowMock.mockResolvedValue(true)
+
+    await main.run()
+    expect(runMock).toHaveReturned()
+    expect(workflowMock).toHaveBeenCalledTimes(1)
+    expect(setFailedMock).not.toHaveBeenCalled()
+    expect(restoreCacheMock).not.toHaveBeenCalled()
+    expect(saveCacheMock).not.toHaveBeenCalled()
+    expect(createCheckMock).not.toHaveBeenCalled()
   })
 })

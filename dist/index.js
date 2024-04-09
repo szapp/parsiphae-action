@@ -41159,7 +41159,7 @@ var import_graphql = __nccwpck_require__(8467);
 var import_auth_token = __nccwpck_require__(9379);
 
 // pkg/dist-src/version.js
-var VERSION = "5.1.0";
+var VERSION = "5.2.0";
 
 // pkg/dist-src/index.js
 var noop = () => {
@@ -41326,7 +41326,7 @@ module.exports = __toCommonJS(dist_src_exports);
 var import_universal_user_agent = __nccwpck_require__(5030);
 
 // pkg/dist-src/version.js
-var VERSION = "9.0.4";
+var VERSION = "9.0.5";
 
 // pkg/dist-src/defaults.js
 var userAgent = `octokit-endpoint.js/${VERSION} ${(0, import_universal_user_agent.getUserAgent)()}`;
@@ -41711,7 +41711,7 @@ var import_request3 = __nccwpck_require__(6234);
 var import_universal_user_agent = __nccwpck_require__(5030);
 
 // pkg/dist-src/version.js
-var VERSION = "7.0.2";
+var VERSION = "7.1.0";
 
 // pkg/dist-src/with-defaults.js
 var import_request2 = __nccwpck_require__(6234);
@@ -44536,7 +44536,7 @@ var import_endpoint = __nccwpck_require__(9440);
 var import_universal_user_agent = __nccwpck_require__(5030);
 
 // pkg/dist-src/version.js
-var VERSION = "8.2.0";
+var VERSION = "8.4.0";
 
 // pkg/dist-src/is-plain-object.js
 function isPlainObject(value) {
@@ -44561,7 +44561,7 @@ function getBufferResponse(response) {
 
 // pkg/dist-src/fetch-wrapper.js
 function fetchWrapper(requestOptions) {
-  var _a, _b, _c;
+  var _a, _b, _c, _d;
   const log = requestOptions.request && requestOptions.request.log ? requestOptions.request.log : console;
   const parseSuccessResponseBody = ((_a = requestOptions.request) == null ? void 0 : _a.parseSuccessResponseBody) !== false;
   if (isPlainObject(requestOptions.body) || Array.isArray(requestOptions.body)) {
@@ -44582,8 +44582,9 @@ function fetchWrapper(requestOptions) {
   return fetch(requestOptions.url, {
     method: requestOptions.method,
     body: requestOptions.body,
+    redirect: (_c = requestOptions.request) == null ? void 0 : _c.redirect,
     headers: requestOptions.headers,
-    signal: (_c = requestOptions.request) == null ? void 0 : _c.signal,
+    signal: (_d = requestOptions.request) == null ? void 0 : _d.signal,
     // duplex must be set if request.body is ReadableStream or Async Iterables.
     // See https://fetch.spec.whatwg.org/#dom-requestinit-duplex.
     ...requestOptions.body && { duplex: "half" }
@@ -48746,7 +48747,8 @@ exports.Deprecation = Deprecation;
  */
 
 /**
- * @typedef {Record<"0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9", string>} DigitReplacements
+ * @internal
+ * @typedef {[string, string, string, string, string, string, string, string, string, string]} DigitReplacements
  */
 
 /**
@@ -48784,10 +48786,35 @@ exports.Deprecation = Deprecation;
  */
 
 /**
+ * @internal
  * @typedef {Required<Options>} NormalizedOptions
  */
 
 (function () {
+  // Fallback for `Object.assign` if relevant.
+  var assign =
+    Object.assign ||
+    /** @param {...any} destination */
+    function (destination) {
+      var source;
+      for (var i = 1; i < arguments.length; i++) {
+        source = arguments[i];
+        for (var prop in source) {
+          if (has(source, prop)) {
+            destination[prop] = source[prop];
+          }
+        }
+      }
+      return destination;
+    };
+
+  // Fallback for `Array.isArray` if relevant.
+  var isArray =
+    Array.isArray ||
+    function (arg) {
+      return Object.prototype.toString.call(arg) === "[object Array]";
+    };
+
   // This has to be defined separately because of a bug: we want to alias
   // `gr` and `el` for backwards-compatiblity. In a breaking change, we can
   // remove `gr` entirely.
@@ -48820,7 +48847,10 @@ exports.Deprecation = Deprecation;
     ","
   );
 
-  /** @type {Record<string, Language>} */
+  /**
+   * @internal
+   * @type {Record<string, Language>}
+   */
   var LANGUAGES = {
     af: language(
       "jaar",
@@ -48847,6 +48877,7 @@ exports.Deprecation = Deprecation;
       },
       ","
     ),
+    am: language("ዓመት", "ወር", "ሳምንት", "ቀን", "ሰዓት", "ደቂቃ", "ሰከንድ", "ሚሊሰከንድ"),
     ar: assign(
       language(
         function (c) {
@@ -50144,6 +50175,7 @@ exports.Deprecation = Deprecation;
   /**
    * Helper function for creating language definitions.
    *
+   * @internal
    * @param {Unit} y
    * @param {Unit} mo
    * @param {Unit} w
@@ -50167,6 +50199,7 @@ exports.Deprecation = Deprecation;
   /**
    * Helper function for Arabic.
    *
+   * @internal
    * @param {number} c
    * @returns {0 | 1 | 2}
    */
@@ -50183,6 +50216,7 @@ exports.Deprecation = Deprecation;
   /**
    * Helper function for Polish.
    *
+   * @internal
    * @param {number} c
    * @returns {0 | 1 | 2 | 3}
    */
@@ -50202,6 +50236,7 @@ exports.Deprecation = Deprecation;
   /**
    * Helper function for Slavic languages.
    *
+   * @internal
    * @param {number} c
    * @returns {0 | 1 | 2 | 3}
    */
@@ -50228,6 +50263,7 @@ exports.Deprecation = Deprecation;
   /**
    * Helper function for Czech or Slovak.
    *
+   * @internal
    * @param {number} c
    * @returns {0 | 1 | 2 | 3}
    */
@@ -50247,6 +50283,7 @@ exports.Deprecation = Deprecation;
   /**
    * Helper function for Lithuanian.
    *
+   * @internal
    * @param {number} c
    * @returns {0 | 1 | 2}
    */
@@ -50267,6 +50304,7 @@ exports.Deprecation = Deprecation;
   /**
    * Helper function for Latvian.
    *
+   * @internal
    * @param {number} c
    * @returns {boolean}
    */
@@ -50274,32 +50312,19 @@ exports.Deprecation = Deprecation;
     return c % 10 === 1 && c % 100 !== 11;
   }
 
-  function assign(destination) {
-    var source;
-    for (var i = 1; i < arguments.length; i++) {
-      source = arguments[i];
-      for (var prop in source) {
-        if (has(source, prop)) {
-          destination[prop] = source[prop];
-        }
-      }
-    }
-    return destination;
-  }
-
-  // We need to make sure we support browsers that don't have
-  // `Array.isArray`, so we define a fallback here.
-  var isArray =
-    Array.isArray ||
-    function (arg) {
-      return Object.prototype.toString.call(arg) === "[object Array]";
-    };
-
+  /**
+   * @internal
+   * @template T
+   * @param {T} obj
+   * @param {keyof T} key
+   * @returns {boolean}
+   */
   function has(obj, key) {
     return Object.prototype.hasOwnProperty.call(obj, key);
   }
 
   /**
+   * @internal
    * @param {Pick<Required<Options>, "language" | "fallbacks" | "languages">} options
    * @throws {Error} Throws an error if language is not found.
    * @returns {Language}
@@ -50329,6 +50354,7 @@ exports.Deprecation = Deprecation;
   }
 
   /**
+   * @internal
    * @param {Piece} piece
    * @param {Language} language
    * @param {Pick<Required<Options>, "decimal" | "spacer" | "maxDecimalPoints" | "digitReplacements">} options
@@ -50373,6 +50399,7 @@ exports.Deprecation = Deprecation;
         if (char === ".") {
           formattedCount += decimal;
         } else {
+          // @ts-ignore because `char` should always be 0-9 at this point.
           formattedCount += digitReplacements[char];
         }
       }
@@ -50395,12 +50422,14 @@ exports.Deprecation = Deprecation;
   }
 
   /**
+   * @internal
    * @typedef {Object} Piece
    * @prop {UnitName} unitName
    * @prop {number} unitCount
    */
 
   /**
+   * @internal
    * @param {number} ms
    * @param {Pick<Required<Options>, "units" | "unitMeasures" | "largest" | "round">} options
    * @returns {Piece[]}
@@ -50513,6 +50542,7 @@ exports.Deprecation = Deprecation;
   }
 
   /**
+   * @internal
    * @param {Piece[]} pieces
    * @param {Pick<Required<Options>, "units" | "language" | "languages" | "fallbacks" | "delimiter" | "spacer" | "decimal" | "conjunction" | "maxDecimalPoints" | "serialComma" | "digitReplacements">} options
    * @returns {string}
@@ -50566,8 +50596,15 @@ exports.Deprecation = Deprecation;
 
   /**
    * Create a humanizer, which lets you change the default options.
+   *
+   * @param {Options} [passedOptions]
    */
   function humanizer(passedOptions) {
+    /**
+     * @param {number} ms
+     * @param {Options} [humanizerOptions]
+     * @returns {string}
+     */
     var result = function humanizer(ms, humanizerOptions) {
       // Make sure we have a positive number.
       //
@@ -50612,19 +50649,18 @@ exports.Deprecation = Deprecation;
    *
    * This is a wrapper around the default humanizer.
    */
-  var humanizeDuration = humanizer({});
-
-  humanizeDuration.getSupportedLanguages = function getSupportedLanguages() {
-    var result = [];
-    for (var language in LANGUAGES) {
-      if (has(LANGUAGES, language) && language !== "gr") {
-        result.push(language);
+  var humanizeDuration = assign(humanizer({}), {
+    getSupportedLanguages: function getSupportedLanguages() {
+      var result = [];
+      for (var language in LANGUAGES) {
+        if (has(LANGUAGES, language) && language !== "gr") {
+          result.push(language);
+        }
       }
-    }
-    return result;
-  };
-
-  humanizeDuration.humanizer = humanizer;
+      return result;
+    },
+    humanizer: humanizer
+  });
 
   // @ts-ignore
   if (typeof define === "function" && define.amd) {
@@ -64129,6 +64165,132 @@ module.exports = buildConnector
 
 /***/ }),
 
+/***/ 4462:
+/***/ ((module) => {
+
+"use strict";
+
+
+/** @type {Record<string, string | undefined>} */
+const headerNameLowerCasedRecord = {}
+
+// https://developer.mozilla.org/docs/Web/HTTP/Headers
+const wellknownHeaderNames = [
+  'Accept',
+  'Accept-Encoding',
+  'Accept-Language',
+  'Accept-Ranges',
+  'Access-Control-Allow-Credentials',
+  'Access-Control-Allow-Headers',
+  'Access-Control-Allow-Methods',
+  'Access-Control-Allow-Origin',
+  'Access-Control-Expose-Headers',
+  'Access-Control-Max-Age',
+  'Access-Control-Request-Headers',
+  'Access-Control-Request-Method',
+  'Age',
+  'Allow',
+  'Alt-Svc',
+  'Alt-Used',
+  'Authorization',
+  'Cache-Control',
+  'Clear-Site-Data',
+  'Connection',
+  'Content-Disposition',
+  'Content-Encoding',
+  'Content-Language',
+  'Content-Length',
+  'Content-Location',
+  'Content-Range',
+  'Content-Security-Policy',
+  'Content-Security-Policy-Report-Only',
+  'Content-Type',
+  'Cookie',
+  'Cross-Origin-Embedder-Policy',
+  'Cross-Origin-Opener-Policy',
+  'Cross-Origin-Resource-Policy',
+  'Date',
+  'Device-Memory',
+  'Downlink',
+  'ECT',
+  'ETag',
+  'Expect',
+  'Expect-CT',
+  'Expires',
+  'Forwarded',
+  'From',
+  'Host',
+  'If-Match',
+  'If-Modified-Since',
+  'If-None-Match',
+  'If-Range',
+  'If-Unmodified-Since',
+  'Keep-Alive',
+  'Last-Modified',
+  'Link',
+  'Location',
+  'Max-Forwards',
+  'Origin',
+  'Permissions-Policy',
+  'Pragma',
+  'Proxy-Authenticate',
+  'Proxy-Authorization',
+  'RTT',
+  'Range',
+  'Referer',
+  'Referrer-Policy',
+  'Refresh',
+  'Retry-After',
+  'Sec-WebSocket-Accept',
+  'Sec-WebSocket-Extensions',
+  'Sec-WebSocket-Key',
+  'Sec-WebSocket-Protocol',
+  'Sec-WebSocket-Version',
+  'Server',
+  'Server-Timing',
+  'Service-Worker-Allowed',
+  'Service-Worker-Navigation-Preload',
+  'Set-Cookie',
+  'SourceMap',
+  'Strict-Transport-Security',
+  'Supports-Loading-Mode',
+  'TE',
+  'Timing-Allow-Origin',
+  'Trailer',
+  'Transfer-Encoding',
+  'Upgrade',
+  'Upgrade-Insecure-Requests',
+  'User-Agent',
+  'Vary',
+  'Via',
+  'WWW-Authenticate',
+  'X-Content-Type-Options',
+  'X-DNS-Prefetch-Control',
+  'X-Frame-Options',
+  'X-Permitted-Cross-Domain-Policies',
+  'X-Powered-By',
+  'X-Requested-With',
+  'X-XSS-Protection'
+]
+
+for (let i = 0; i < wellknownHeaderNames.length; ++i) {
+  const key = wellknownHeaderNames[i]
+  const lowerCasedKey = key.toLowerCase()
+  headerNameLowerCasedRecord[key] = headerNameLowerCasedRecord[lowerCasedKey] =
+    lowerCasedKey
+}
+
+// Note: object prototypes should not be able to be referenced. e.g. `Object#hasOwnProperty`.
+Object.setPrototypeOf(headerNameLowerCasedRecord, null)
+
+module.exports = {
+  wellknownHeaderNames,
+  headerNameLowerCasedRecord
+}
+
+
+/***/ }),
+
 /***/ 8045:
 /***/ ((module) => {
 
@@ -64959,6 +65121,7 @@ const { InvalidArgumentError } = __nccwpck_require__(8045)
 const { Blob } = __nccwpck_require__(4300)
 const nodeUtil = __nccwpck_require__(3837)
 const { stringify } = __nccwpck_require__(3477)
+const { headerNameLowerCasedRecord } = __nccwpck_require__(4462)
 
 const [nodeMajor, nodeMinor] = process.versions.node.split('.').map(v => Number(v))
 
@@ -65166,6 +65329,15 @@ const KEEPALIVE_TIMEOUT_EXPR = /timeout=(\d+)/
 function parseKeepAliveTimeout (val) {
   const m = val.toString().match(KEEPALIVE_TIMEOUT_EXPR)
   return m ? parseInt(m[1], 10) * 1000 : null
+}
+
+/**
+ * Retrieves a header name and returns its lowercase value.
+ * @param {string | Buffer} value Header name
+ * @returns {string}
+ */
+function headerNameToString (value) {
+  return headerNameLowerCasedRecord[value] || value.toLowerCase()
 }
 
 function parseHeaders (headers, obj = {}) {
@@ -65439,6 +65611,7 @@ module.exports = {
   isIterable,
   isAsyncIterable,
   isDestroyed,
+  headerNameToString,
   parseRawHeaders,
   parseHeaders,
   parseKeepAliveTimeout,
@@ -72086,14 +72259,18 @@ const { isBlobLike, toUSVString, ReadableStreamFrom } = __nccwpck_require__(3983
 const assert = __nccwpck_require__(9491)
 const { isUint8Array } = __nccwpck_require__(9830)
 
+let supportedHashes = []
+
 // https://nodejs.org/api/crypto.html#determining-if-crypto-support-is-unavailable
 /** @type {import('crypto')|undefined} */
 let crypto
 
 try {
   crypto = __nccwpck_require__(6113)
+  const possibleRelevantHashes = ['sha256', 'sha384', 'sha512']
+  supportedHashes = crypto.getHashes().filter((hash) => possibleRelevantHashes.includes(hash))
+/* c8 ignore next 3 */
 } catch {
-
 }
 
 function responseURL (response) {
@@ -72621,66 +72798,56 @@ function bytesMatch (bytes, metadataList) {
     return true
   }
 
-  // 3. If parsedMetadata is the empty set, return true.
+  // 3. If response is not eligible for integrity validation, return false.
+  // TODO
+
+  // 4. If parsedMetadata is the empty set, return true.
   if (parsedMetadata.length === 0) {
     return true
   }
 
-  // 4. Let metadata be the result of getting the strongest
+  // 5. Let metadata be the result of getting the strongest
   //    metadata from parsedMetadata.
-  const list = parsedMetadata.sort((c, d) => d.algo.localeCompare(c.algo))
-  // get the strongest algorithm
-  const strongest = list[0].algo
-  // get all entries that use the strongest algorithm; ignore weaker
-  const metadata = list.filter((item) => item.algo === strongest)
+  const strongest = getStrongestMetadata(parsedMetadata)
+  const metadata = filterMetadataListByAlgorithm(parsedMetadata, strongest)
 
-  // 5. For each item in metadata:
+  // 6. For each item in metadata:
   for (const item of metadata) {
     // 1. Let algorithm be the alg component of item.
     const algorithm = item.algo
 
     // 2. Let expectedValue be the val component of item.
-    let expectedValue = item.hash
+    const expectedValue = item.hash
 
     // See https://github.com/web-platform-tests/wpt/commit/e4c5cc7a5e48093220528dfdd1c4012dc3837a0e
     // "be liberal with padding". This is annoying, and it's not even in the spec.
 
-    if (expectedValue.endsWith('==')) {
-      expectedValue = expectedValue.slice(0, -2)
-    }
-
     // 3. Let actualValue be the result of applying algorithm to bytes.
     let actualValue = crypto.createHash(algorithm).update(bytes).digest('base64')
 
-    if (actualValue.endsWith('==')) {
-      actualValue = actualValue.slice(0, -2)
+    if (actualValue[actualValue.length - 1] === '=') {
+      if (actualValue[actualValue.length - 2] === '=') {
+        actualValue = actualValue.slice(0, -2)
+      } else {
+        actualValue = actualValue.slice(0, -1)
+      }
     }
 
     // 4. If actualValue is a case-sensitive match for expectedValue,
     //    return true.
-    if (actualValue === expectedValue) {
-      return true
-    }
-
-    let actualBase64URL = crypto.createHash(algorithm).update(bytes).digest('base64url')
-
-    if (actualBase64URL.endsWith('==')) {
-      actualBase64URL = actualBase64URL.slice(0, -2)
-    }
-
-    if (actualBase64URL === expectedValue) {
+    if (compareBase64Mixed(actualValue, expectedValue)) {
       return true
     }
   }
 
-  // 6. Return false.
+  // 7. Return false.
   return false
 }
 
 // https://w3c.github.io/webappsec-subresource-integrity/#grammardef-hash-with-options
 // https://www.w3.org/TR/CSP2/#source-list-syntax
 // https://www.rfc-editor.org/rfc/rfc5234#appendix-B.1
-const parseHashWithOptions = /((?<algo>sha256|sha384|sha512)-(?<hash>[A-z0-9+/]{1}.*={0,2}))( +[\x21-\x7e]?)?/i
+const parseHashWithOptions = /(?<algo>sha256|sha384|sha512)-((?<hash>[A-Za-z0-9+/]+|[A-Za-z0-9_-]+)={0,2}(?:\s|$)( +[!-~]*)?)?/i
 
 /**
  * @see https://w3c.github.io/webappsec-subresource-integrity/#parse-metadata
@@ -72694,8 +72861,6 @@ function parseMetadata (metadata) {
   // 2. Let empty be equal to true.
   let empty = true
 
-  const supportedHashes = crypto.getHashes()
-
   // 3. For each token returned by splitting metadata on spaces:
   for (const token of metadata.split(' ')) {
     // 1. Set empty to false.
@@ -72705,7 +72870,11 @@ function parseMetadata (metadata) {
     const parsedToken = parseHashWithOptions.exec(token)
 
     // 3. If token does not parse, continue to the next token.
-    if (parsedToken === null || parsedToken.groups === undefined) {
+    if (
+      parsedToken === null ||
+      parsedToken.groups === undefined ||
+      parsedToken.groups.algo === undefined
+    ) {
       // Note: Chromium blocks the request at this point, but Firefox
       // gives a warning that an invalid integrity was given. The
       // correct behavior is to ignore these, and subsequently not
@@ -72714,11 +72883,11 @@ function parseMetadata (metadata) {
     }
 
     // 4. Let algorithm be the hash-algo component of token.
-    const algorithm = parsedToken.groups.algo
+    const algorithm = parsedToken.groups.algo.toLowerCase()
 
     // 5. If algorithm is a hash function recognized by the user
     //    agent, add the parsed token to result.
-    if (supportedHashes.includes(algorithm.toLowerCase())) {
+    if (supportedHashes.includes(algorithm)) {
       result.push(parsedToken.groups)
     }
   }
@@ -72729,6 +72898,82 @@ function parseMetadata (metadata) {
   }
 
   return result
+}
+
+/**
+ * @param {{ algo: 'sha256' | 'sha384' | 'sha512' }[]} metadataList
+ */
+function getStrongestMetadata (metadataList) {
+  // Let algorithm be the algo component of the first item in metadataList.
+  // Can be sha256
+  let algorithm = metadataList[0].algo
+  // If the algorithm is sha512, then it is the strongest
+  // and we can return immediately
+  if (algorithm[3] === '5') {
+    return algorithm
+  }
+
+  for (let i = 1; i < metadataList.length; ++i) {
+    const metadata = metadataList[i]
+    // If the algorithm is sha512, then it is the strongest
+    // and we can break the loop immediately
+    if (metadata.algo[3] === '5') {
+      algorithm = 'sha512'
+      break
+    // If the algorithm is sha384, then a potential sha256 or sha384 is ignored
+    } else if (algorithm[3] === '3') {
+      continue
+    // algorithm is sha256, check if algorithm is sha384 and if so, set it as
+    // the strongest
+    } else if (metadata.algo[3] === '3') {
+      algorithm = 'sha384'
+    }
+  }
+  return algorithm
+}
+
+function filterMetadataListByAlgorithm (metadataList, algorithm) {
+  if (metadataList.length === 1) {
+    return metadataList
+  }
+
+  let pos = 0
+  for (let i = 0; i < metadataList.length; ++i) {
+    if (metadataList[i].algo === algorithm) {
+      metadataList[pos++] = metadataList[i]
+    }
+  }
+
+  metadataList.length = pos
+
+  return metadataList
+}
+
+/**
+ * Compares two base64 strings, allowing for base64url
+ * in the second string.
+ *
+* @param {string} actualValue always base64
+ * @param {string} expectedValue base64 or base64url
+ * @returns {boolean}
+ */
+function compareBase64Mixed (actualValue, expectedValue) {
+  if (actualValue.length !== expectedValue.length) {
+    return false
+  }
+  for (let i = 0; i < actualValue.length; ++i) {
+    if (actualValue[i] !== expectedValue[i]) {
+      if (
+        (actualValue[i] === '+' && expectedValue[i] === '-') ||
+        (actualValue[i] === '/' && expectedValue[i] === '_')
+      ) {
+        continue
+      }
+      return false
+    }
+  }
+
+  return true
 }
 
 // https://w3c.github.io/webappsec-upgrade-insecure-requests/#upgrade-request
@@ -73146,7 +73391,8 @@ module.exports = {
   urlHasHttpsScheme,
   urlIsHttpHttpsScheme,
   readAllBytes,
-  normalizeMethodRecord
+  normalizeMethodRecord,
+  parseMetadata
 }
 
 
@@ -75233,12 +75479,17 @@ function parseLocation (statusCode, headers) {
 
 // https://tools.ietf.org/html/rfc7231#section-6.4.4
 function shouldRemoveHeader (header, removeContent, unknownOrigin) {
-  return (
-    (header.length === 4 && header.toString().toLowerCase() === 'host') ||
-    (removeContent && header.toString().toLowerCase().indexOf('content-') === 0) ||
-    (unknownOrigin && header.length === 13 && header.toString().toLowerCase() === 'authorization') ||
-    (unknownOrigin && header.length === 6 && header.toString().toLowerCase() === 'cookie')
-  )
+  if (header.length === 4) {
+    return util.headerNameToString(header) === 'host'
+  }
+  if (removeContent && util.headerNameToString(header).startsWith('content-')) {
+    return true
+  }
+  if (unknownOrigin && (header.length === 13 || header.length === 6 || header.length === 19)) {
+    const name = util.headerNameToString(header)
+    return name === 'authorization' || name === 'cookie' || name === 'proxy-authorization'
+  }
+  return false
 }
 
 // https://tools.ietf.org/html/rfc7231#section-6.4
@@ -86989,6 +87240,76 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
+/***/ 3812:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.workflow = void 0;
+const core = __importStar(__nccwpck_require__(2186));
+const github = __importStar(__nccwpck_require__(5438));
+async function workflow() {
+    // Only for completed check runs
+    if (github.context.eventName !== 'check_run' || github.context.payload.action !== 'completed')
+        return false;
+    const octokit = github.getOctokit(core.getInput('cleanup-token'));
+    // First, get the workflow ID
+    const { data: { workflow_id }, } = await octokit.rest.actions.getWorkflowRun({
+        ...github.context.repo,
+        run_id: github.context.runId,
+    });
+    // Then, list all workflow runs for the same commit and workflow
+    const { data: { workflow_runs }, } = await octokit.rest.actions.listWorkflowRuns({
+        ...github.context.repo,
+        workflow_id,
+        head_sha: github.context.payload.check_run.head_sha,
+    });
+    // For all workflow runs that are not check runs, delete them
+    const workflows = workflow_runs.filter((w) => w.event !== 'check_run');
+    Promise.all(workflows.map((w) => octokit.rest.actions.deleteWorkflowRun({
+        ...github.context.repo,
+        run_id: w.id,
+    }))).catch((error) => core.error(error));
+    // The summary of the workflow runs is unfortunately not available in the API
+    // So we can only link to the check run
+    await core.summary
+        .addHeading(github.context.payload.check_run.name)
+        .addRaw(`<a href="${github.context.payload.check_run.html_url}">Details</a>`, true)
+        .write({ overwrite: false });
+    // To be able to use a badge, we need to set the exit code
+    process.exitCode = Number(github.context.payload.check_run.conclusion !== 'success');
+    // True means we stop here
+    return true;
+}
+exports.workflow = workflow;
+
+
+/***/ }),
+
 /***/ 399:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -87029,6 +87350,7 @@ const github = __importStar(__nccwpck_require__(5438));
 const glob = __importStar(__nccwpck_require__(8090));
 const io = __importStar(__nccwpck_require__(7436));
 const tc = __importStar(__nccwpck_require__(7784));
+const cleanup_1 = __nccwpck_require__(3812);
 const humanize_duration_1 = __importDefault(__nccwpck_require__(1369));
 const path_1 = __importDefault(__nccwpck_require__(1017));
 // Parsiphae version  (branch, tag, or sha)
@@ -87049,10 +87371,13 @@ const regexParsed = /Parsed |parsing took/;
 const regexParsedFiles = /Parsed [0-9]+ files?/;
 async function run() {
     try {
+        // Clean up
+        if (await (0, cleanup_1.workflow)())
+            return;
         core.startGroup('Format inputs');
         const inputFile = core.getInput('file', { required: true });
         const githubToken = core.getInput('token');
-        const checkName = core.getInput('check_name');
+        const checkName = core.getInput('check-name');
         const doCache = core.getBooleanInput('cache');
         const { GITHUB_WORKSPACE: workspace, RUNNER_OS: runnerOs, RUNNER_ARCH: runnerArch } = process.env;
         const exeName = process.platform === 'win32' ? 'parsiphae.exe' : 'parsiphae';
@@ -87170,6 +87495,7 @@ async function run() {
                     end_line: linenum,
                     annotation_level: 'failure',
                     message: message,
+                    title: 'Syntax error', // Currently all errors are syntax errors
                 });
             });
             // Construct detailed information
@@ -87193,7 +87519,7 @@ For more details on Parsiphae, see [Lehona/Parsiphae@${parVer}](${link}).`;
             const checkRunName = numFiles > 1 ? `${checkName}: ${path_1.default.basename(srcfile)}` : checkName;
             const numErr = annotations.length;
             const duration = (0, humanize_duration_1.default)(performance.now() - startTime, { round: true, largest: 2, units: ['m', 's', 'ms'] });
-            const { data: { id: checkId, details_url: checkUrl }, } = await octokit.rest.checks.create({
+            const { data: { id: checkId, html_url: checkUrl }, } = await octokit.rest.checks.create({
                 ...github.context.repo,
                 name: checkRunName,
                 head_sha: github.context.sha,

@@ -9,15 +9,18 @@ inputs:
   file:
     description: File path or pattern of D file(s) or SRC file(s)
     required: true
-  token:
-    description: Github authentication token
-    default: ${{ github.token }}
-  check_name:
+  check-name:
     description: Name of check run
     default: Parsiphae
   cache:
     description: Cache Parsiphae built
     default: true
+  token:
+    description: Github authentication token
+    default: ${{ github.token }}
+  cleanup-token:
+    description: This input is for clean up actions and should always be left at its default
+    default: ${{ github.token }}
 
 runs:
   using: node20
