@@ -36,14 +36,11 @@ on:
     paths:
       - '**.src'
       - '**.d'
-  check_run: # This is optional, see notes below
-    types: completed
 
 # These permissions are necessary for creating the check runs
 permissions:
   contents: read
   checks: write
-  actions: write # This is optional, see notes below
 
 # The checkout action needs to be run first
 jobs:
@@ -58,6 +55,7 @@ jobs:
           file: _work/Data/Scripts/Content/Gothic.src
           check-name: # Optional (see below)
           cache: # Optional
+          token: # Optional
 ```
 
 ## Configuration
@@ -89,8 +87,45 @@ Unfortunately, the creation of the superfluous workflow check status cannot be s
 
 One workaround is to delete the entire workflow after the checks have been performed, effectively removing the check status from the commit.
 However, this is not possible with the default `GITHUB_TOKEN`, to avoid recursive workflow runs.
-To remove the additional status check, call this GitHub Action with an authentication `token` of a GitHub App and enable the `check_run` event with `completed` (see above).
+To remove the additional status check, call this GitHub Action with an authentication `token` of a GitHub App and enable the `check_run` event with `completed` (see below).
+For more details the issue, see [here](https://github.com/peter-murray/workflow-application-token-action#readme).
 Always leave the additional input `cleanup-token` at its default.
-For more details, see [here](https://github.com/peter-murray/workflow-application-token-action#readme).
 
 Nevertheless, this is a optional cosmetic enhancement and this GitHub action works fine without.
+
+```yaml
+name: scripts
+
+on:
+  push:
+    paths:
+      - '**.src'
+      - '**.d'
+  check_run:
+    types: completed
+
+permissions:
+  contents: read
+  checks: write
+  actions: write
+
+jobs:
+  parsiphae:
+    name: Run Parsiphae on scripts
+    if: github.event_name != 'check_run' || startsWith(github.event.check_run.name, 'Parsiphae') # Adjust to check name
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ vars.APP_ID }} # GitHub App ID
+          private-key: ${{ secrets.APP_KEY }} # GitHub App private key
+      - uses: actions/checkout@v4
+      - name: Check scripts
+        uses: szapp/parsiphae-action@v1
+        with:
+          file: _work/Data/Scripts/Content/Gothic.src
+          check-name: # Optional (see below)
+          cache: # Optional
+          token: ${{ steps.app-token.outputs.token }}
+```

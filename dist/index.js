@@ -87272,11 +87272,31 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.workflow = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
+const promises_1 = __nccwpck_require__(8670);
 async function workflow() {
     // Only for completed check runs
     if (github.context.eventName !== 'check_run' || github.context.payload.action !== 'completed')
         return false;
     const octokit = github.getOctokit(core.getInput('cleanup-token'));
+    const checkName = core.getInput('check-name');
+    // Check if the triggering check run is the correct one
+    if (!github.context.payload.check_run.name.startsWith(checkName)) {
+        // This workflow run here will then be also deleted by the correctly triggered run
+        core.setFailed(`This action is only intended to be run on the "${checkName}" check run`);
+        return true;
+    }
+    // Let all running workflows finish
+    let status;
+    do {
+        core.info('Waiting for any workflow runs to finish...');
+        await (0, promises_1.setTimeout)(15000); // Give some time for all workflows to start up
+        const { data: { workflow_runs }, } = await octokit.rest.actions.listWorkflowRunsForRepo({
+            ...github.context.repo,
+            status: 'in_progress',
+            head_sha: github.context.payload.check_run.head_sha,
+        });
+        status = workflow_runs.some((w) => w.event !== 'check_run');
+    } while (status);
     // First, get the workflow ID
     const { data: { workflow_id }, } = await octokit.rest.actions.getWorkflowRun({
         ...github.context.repo,
@@ -87288,12 +87308,15 @@ async function workflow() {
         workflow_id,
         head_sha: github.context.payload.check_run.head_sha,
     });
-    // For all workflow runs that are not check runs, delete them
-    const workflows = workflow_runs.filter((w) => w.event !== 'check_run');
-    Promise.all(workflows.map((w) => octokit.rest.actions.deleteWorkflowRun({
+    // Delete all workflow runs except the current one
+    const workflows = workflow_runs.filter((w) => w.id !== github.context.runId);
+    core.info(`Runs to delete: ${workflows.map((w) => `${w.id}(${w.status})`).join(', ')}`);
+    Promise.allSettled(workflows.map((w) => octokit.rest.actions
+        .deleteWorkflowRun({
         ...github.context.repo,
         run_id: w.id,
-    }))).catch((error) => core.error(error));
+    })
+        .catch((error) => core.error(error))));
     // The summary of the workflow runs is unfortunately not available in the API
     // So we can only link to the check run
     await core.summary
@@ -87799,6 +87822,14 @@ module.exports = require("string_decoder");
 
 "use strict";
 module.exports = require("timers");
+
+/***/ }),
+
+/***/ 8670:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("timers/promises");
 
 /***/ }),
 
