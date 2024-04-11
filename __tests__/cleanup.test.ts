@@ -26,6 +26,8 @@ const listWorkflowRunsForRepoMock = jest.fn(async (_params) => ({
 }))
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const deleteWorkflowRunMock = jest.fn(async (_params) => {})
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const forceCancelWorkflowRunMock = jest.fn(async (_params) => {})
 jest.mock('@actions/github', () => {
   return {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -36,6 +38,7 @@ jest.mock('@actions/github', () => {
             getWorkflowRun: getWorkflowRunMock,
             listWorkflowRuns: listWorkflowRunsMock,
             listWorkflowRunsForRepo: listWorkflowRunsForRepoMock,
+            forceCancelWorkflowRun: forceCancelWorkflowRunMock,
             deleteWorkflowRun: deleteWorkflowRunMock,
           },
         },
@@ -124,12 +127,14 @@ describe('cleanup', () => {
         workflow_runs: [{ id: 1, event: 'push' }],
       },
     })
+    forceCancelWorkflowRunMock.mockRejectedValueOnce(new Error('Cancel error'))
 
     const result = await workflow()
 
     expect(result).toBe(true)
     expect(timers.setTimeout).toHaveBeenCalledWith(15000)
-    expect(timers.setTimeout).toHaveBeenCalledTimes(2)
+    expect(timers.setTimeout).toHaveBeenCalledWith(5000)
+    expect(timers.setTimeout).toHaveBeenCalledTimes(3)
     expect(listWorkflowRunsForRepoMock).toHaveBeenCalledWith({
       ...github.context.repo,
       status: 'in_progress',
@@ -153,6 +158,10 @@ describe('cleanup', () => {
       head_sha: github.context.payload.check_run.head_sha,
     })
     expect(core.info).toHaveBeenCalledWith('Runs to delete: 1(in_progress), 3(completed)')
+    expect(forceCancelWorkflowRunMock).toHaveBeenCalledWith({
+      ...github.context.repo,
+      run_id: 1,
+    })
     expect(deleteWorkflowRunMock).toHaveBeenCalledWith({
       ...github.context.repo,
       run_id: 1,
@@ -178,7 +187,8 @@ describe('cleanup', () => {
     const result = await workflow()
 
     expect(result).toBe(true)
-    expect(timers.setTimeout).toHaveBeenCalledWith(15000)
+    expect(timers.setTimeout).toHaveBeenCalledWith(5000)
+    expect(timers.setTimeout).toHaveBeenCalledTimes(2)
     expect(listWorkflowRunsForRepoMock).toHaveBeenCalledWith({
       ...github.context.repo,
       status: 'in_progress',
@@ -193,6 +203,11 @@ describe('cleanup', () => {
       workflow_id: 123,
       head_sha: github.context.payload.check_run.head_sha,
     })
+    expect(core.info).toHaveBeenCalledWith('Runs to delete: 1(in_progress), 3(completed)')
+    expect(forceCancelWorkflowRunMock).toHaveBeenCalledWith({
+      ...github.context.repo,
+      run_id: 1,
+    })
     expect(deleteWorkflowRunMock).toHaveBeenCalledWith({
       ...github.context.repo,
       run_id: 1,
@@ -204,8 +219,8 @@ describe('cleanup', () => {
     expect(core.summary.addHeading).toHaveBeenCalledWith(github.context.payload.check_run.name)
     expect(core.summary.addRaw).toHaveBeenCalledWith(`<a href="${github.context.payload.check_run.html_url}">Details</a>`, true)
     expect(core.summary.write).toHaveBeenCalledWith({ overwrite: false })
-    expect(core.info).toHaveBeenCalledWith(`\u001b[32m${new Error('Delete error')}\u001b[0m`)
+    expect(core.info).toHaveBeenCalledWith(`\u001b[31m${new Error('Delete error')}\u001b[0m`)
     expect(core.setFailed).not.toHaveBeenCalled()
-    expect(process.exitCode).toBe(core.ExitCode.Failure)
+    expect(process.exitCode).toBe(core.ExitCode.Success)
   })
 })

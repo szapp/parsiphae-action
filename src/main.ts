@@ -141,7 +141,7 @@ export async function run(): Promise<void> {
     const octokit = github.getOctokit(githubToken)
 
     // Process input file(s) asynchronously
-    await Promise.all(
+    const failed = await Promise.all(
       files.map(async (file, idx) => {
         const srcfile = stripWorkspace(file)
         const extFlag = file.replace(regexExtSrc, 's').replace(regexExtD, 'i')
@@ -224,7 +224,7 @@ For more details on Parsiphae, see [Lehona/Parsiphae@${parVer}](${link}).`
     )
       .then(async (summary) => {
         // Build summary
-        core.startGroup('Generate summary')
+        core.info('Generate summary')
         summary.sort((a, b) => a.idx - b.idx)
         await core.summary
           .addHeading(`${checkName} Results`)
@@ -247,12 +247,15 @@ For more details on Parsiphae, see [Lehona/Parsiphae@${parVer}](${link}).`
             ]),
           ])
           .write({ overwrite: false })
-        core.endGroup()
+        return summary.some((s) => s.numErr > 0)
       })
       .catch((error) => {
         /* istanbul ignore next */
         throw error
       })
+
+    // Set workflow status
+    process.exitCode = Number(failed)
   } catch (error) {
     const msg: string = error instanceof Error ? error.message : String(error)
     core.setFailed(msg)

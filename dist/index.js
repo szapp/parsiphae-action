@@ -87308,15 +87308,29 @@ async function workflow() {
         workflow_id,
         head_sha: github.context.payload.check_run.head_sha,
     });
-    // Delete all workflow runs except the current one
+    // Exclude the current workflow run
     const workflows = workflow_runs.filter((w) => w.id !== github.context.runId);
+    // Find success across all workflow runs (non-check runs)
+    const failure = workflows.filter((w) => w.event !== 'check_run').some((w) => ['failure', 'cancelled'].includes(w.conclusion ?? ''));
+    // Delete all workflow runs
     core.info(`Runs to delete: ${workflows.map((w) => `${w.id}(${w.status})`).join(', ')}`);
-    Promise.allSettled(workflows.map((w) => octokit.rest.actions
-        .deleteWorkflowRun({
-        ...github.context.repo,
-        run_id: w.id,
-    })
-        .catch((error) => core.info(`\u001b[32m${error}\u001b[0m`))));
+    await Promise.allSettled(workflows.map(async (w) => {
+        if (w.status === 'in_progress') {
+            await octokit.rest.actions
+                .forceCancelWorkflowRun({
+                ...github.context.repo,
+                run_id: w.id,
+            })
+                .catch((error) => core.info(`\u001b[31m${error}\u001b[0m`))
+                .then(() => (0, promises_1.setTimeout)(5000));
+        }
+        await octokit.rest.actions
+            .deleteWorkflowRun({
+            ...github.context.repo,
+            run_id: w.id,
+        })
+            .catch((error) => core.info(`\u001b[31m${error}\u001b[0m`));
+    }));
     // The summary of the workflow runs is unfortunately not available in the API
     // So we can only link to the check run
     await core.summary
@@ -87324,7 +87338,8 @@ async function workflow() {
         .addRaw(`<a href="${github.context.payload.check_run.html_url}">Details</a>`, true)
         .write({ overwrite: false });
     // To be able to use a badge, we need to set the exit code
-    process.exitCode = Number(github.context.payload.check_run.conclusion !== 'success');
+    // Note: This does not reflect the status of the check run but across all workflow runs
+    process.exitCode = Number(failure);
     // True means we stop here
     return true;
 }
@@ -87494,7 +87509,7 @@ async function run() {
         // Prepare git
         const octokit = github.getOctokit(githubToken);
         // Process input file(s) asynchronously
-        await Promise.all(files.map(async (file, idx) => {
+        const failed = await Promise.all(files.map(async (file, idx) => {
             const srcfile = stripWorkspace(file);
             const extFlag = file.replace(regexExtSrc, 's').replace(regexExtD, 'i');
             // Record stdout and stderr for exec
@@ -87561,7 +87576,7 @@ For more details on Parsiphae, see [Lehona/Parsiphae@${parVer}](${link}).`;
         }))
             .then(async (summary) => {
             // Build summary
-            core.startGroup('Generate summary');
+            core.info('Generate summary');
             summary.sort((a, b) => a.idx - b.idx);
             await core.summary
                 .addHeading(`${checkName} Results`)
@@ -87584,12 +87599,14 @@ For more details on Parsiphae, see [Lehona/Parsiphae@${parVer}](${link}).`;
                 ]),
             ])
                 .write({ overwrite: false });
-            core.endGroup();
+            return summary.some((s) => s.numErr > 0);
         })
             .catch((error) => {
             /* istanbul ignore next */
             throw error;
         });
+        // Set workflow status
+        process.exitCode = Number(failed);
     }
     catch (error) {
         const msg = error instanceof Error ? error.message : String(error);

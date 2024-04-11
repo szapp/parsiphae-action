@@ -47,18 +47,32 @@ export async function workflow(): Promise<boolean> {
     head_sha: github.context.payload.check_run.head_sha,
   })
 
-  // Delete all workflow runs except the current one
+  // Exclude the current workflow run
   const workflows = workflow_runs.filter((w) => w.id !== github.context.runId)
+
+  // Find success across all workflow runs (non-check runs)
+  const failure = workflows.filter((w) => w.event !== 'check_run').some((w) => ['failure', 'cancelled'].includes(w.conclusion ?? ''))
+
+  // Delete all workflow runs
   core.info(`Runs to delete: ${workflows.map((w) => `${w.id}(${w.status})`).join(', ')}`)
-  Promise.allSettled(
-    workflows.map((w) =>
-      octokit.rest.actions
+  await Promise.allSettled(
+    workflows.map(async (w) => {
+      if (w.status === 'in_progress') {
+        await octokit.rest.actions
+          .forceCancelWorkflowRun({
+            ...github.context.repo,
+            run_id: w.id,
+          })
+          .catch((error) => core.info(`\u001b[31m${error}\u001b[0m`))
+          .then(() => setTimeout(5000))
+      }
+      await octokit.rest.actions
         .deleteWorkflowRun({
           ...github.context.repo,
           run_id: w.id,
         })
-        .catch((error) => core.info(`\u001b[32m${error}\u001b[0m`))
-    )
+        .catch((error) => core.info(`\u001b[31m${error}\u001b[0m`))
+    })
   )
 
   // The summary of the workflow runs is unfortunately not available in the API
@@ -69,7 +83,8 @@ export async function workflow(): Promise<boolean> {
     .write({ overwrite: false })
 
   // To be able to use a badge, we need to set the exit code
-  process.exitCode = Number(github.context.payload.check_run.conclusion !== 'success')
+  // Note: This does not reflect the status of the check run but across all workflow runs
+  process.exitCode = Number(failure)
 
   // True means we stop here
   return true
