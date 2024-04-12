@@ -87313,23 +87313,12 @@ async function workflow() {
     const failure = workflows.filter((w) => w.event !== 'check_run').some((w) => ['failure', 'cancelled'].includes(w.conclusion ?? ''));
     // Delete all workflow runs
     core.info(`Runs to delete: ${workflows.map((w) => `${w.id}(${w.status})`).join(', ')}`);
-    await Promise.allSettled(workflows.map(async (w) => {
-        if (w.status === 'in_progress') {
-            await octokit.rest.actions
-                .forceCancelWorkflowRun({
-                ...github.context.repo,
-                run_id: w.id,
-            })
-                .catch((error) => core.info(`\u001b[31m${error}\u001b[0m`))
-                .then(() => (0, promises_1.setTimeout)(5000));
-        }
-        await octokit.rest.actions
-            .deleteWorkflowRun({
-            ...github.context.repo,
-            run_id: w.id,
-        })
-            .catch((error) => core.info(`\u001b[31m${error}\u001b[0m`));
-    }));
+    Promise.allSettled(workflows.map((w) => octokit.rest.actions
+        .deleteWorkflowRun({
+        ...github.context.repo,
+        run_id: w.id,
+    })
+        .catch((error) => core.info(`\u001b[31m${error}\u001b[0m`))));
     // The summary of the workflow runs is unfortunately not available in the API
     // So we can only link to the check run
     await core.summary

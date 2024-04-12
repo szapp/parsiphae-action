@@ -113,7 +113,7 @@ permissions:
 jobs:
   parsiphae:
     name: Run Parsiphae on scripts
-    if: github.event_name != 'check_run' || github.event.check_run.external_id == join(github.workflow, '-0')
+    if: github.event_name != 'check_run' || github.event.check_run.external_id == format('{0}-0', github.workflow)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/create-github-app-token@v1

@@ -55,24 +55,15 @@ export async function workflow(): Promise<boolean> {
 
   // Delete all workflow runs
   core.info(`Runs to delete: ${workflows.map((w) => `${w.id}(${w.status})`).join(', ')}`)
-  await Promise.allSettled(
-    workflows.map(async (w) => {
-      if (w.status === 'in_progress') {
-        await octokit.rest.actions
-          .forceCancelWorkflowRun({
-            ...github.context.repo,
-            run_id: w.id,
-          })
-          .catch((error) => core.info(`\u001b[31m${error}\u001b[0m`))
-          .then(() => setTimeout(5000))
-      }
-      await octokit.rest.actions
+  Promise.allSettled(
+    workflows.map((w) =>
+      octokit.rest.actions
         .deleteWorkflowRun({
           ...github.context.repo,
           run_id: w.id,
         })
         .catch((error) => core.info(`\u001b[31m${error}\u001b[0m`))
-    })
+    )
   )
 
   // The summary of the workflow runs is unfortunately not available in the API
