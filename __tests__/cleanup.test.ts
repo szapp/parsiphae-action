@@ -46,10 +46,12 @@ jest.mock('@actions/github', () => {
     },
     context: {
       eventName: 'check_run',
+      workflow: 'workflow.yml',
       payload: {
         action: 'completed',
         check_run: {
           head_sha: 'abc123',
+          external_id: 'workflow.yml-0',
           name: 'Patch Validator',
           html_url: 'https://example.com/check_run',
           conclusion: 'success',
@@ -100,7 +102,7 @@ describe('cleanup', () => {
     github.context.eventName = 'check_run'
     github.context.payload.action = 'completed'
     github.context.payload.check_run.conclusion = 'failure'
-    github.context.payload.check_run.name = 'Wrong name'
+    github.context.payload.check_run.external_id = 'workflow.yml-1'
 
     const result = await workflow()
 
@@ -114,14 +116,14 @@ describe('cleanup', () => {
     expect(core.summary.addHeading).not.toHaveBeenCalled()
     expect(core.summary.addRaw).not.toHaveBeenCalled()
     expect(core.summary.write).not.toHaveBeenCalled()
-    expect(core.setFailed).toHaveBeenCalledWith('This action is only intended to be run on the "CheckName" check run')
+    expect(core.setFailed).toHaveBeenCalledWith('This action is only intended to be run on the first check run of the workflow only')
   })
 
   it('should delete workflow runs and set exit code if the event is check_run and action is completed', async () => {
     github.context.eventName = 'check_run'
     github.context.payload.action = 'completed'
     github.context.payload.check_run.conclusion = 'success'
-    github.context.payload.check_run.name = 'CheckName'
+    github.context.payload.check_run.external_id = 'workflow.yml-0'
     listWorkflowRunsForRepoMock.mockResolvedValueOnce({
       data: {
         workflow_runs: [{ id: 1, event: 'push' }],
@@ -181,7 +183,7 @@ describe('cleanup', () => {
     github.context.eventName = 'check_run'
     github.context.payload.action = 'completed'
     github.context.payload.check_run.conclusion = 'failure'
-    github.context.payload.check_run.name = 'CheckName: some file'
+    github.context.payload.check_run.external_id = 'workflow.yml-0'
     deleteWorkflowRunMock.mockRejectedValueOnce(new Error('Delete error'))
 
     const result = await workflow()

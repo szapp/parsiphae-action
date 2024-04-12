@@ -207,6 +207,7 @@ For more details on Parsiphae, see [Lehona/Parsiphae@${parVer}](${link}).`
           ...github.context.repo,
           name: checkRunName,
           head_sha: github.context.sha,
+          external_id: `${github.context.workflow}-${idx}`,
           started_at: startedAt.toISOString(),
           completed_at: new Date().toISOString(),
           conclusion: numErr ? 'failure' : 'success',

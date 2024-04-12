@@ -57,6 +57,7 @@ jest.mock('@actions/github', () => {
         repo: 'repo',
       },
       sha: 'sha',
+      workflow: 'workflow.yml',
     },
   }
 })
@@ -109,6 +110,7 @@ describe('action', () => {
       repo: 'repo',
       name: 'Testing: fail.d',
       head_sha: 'sha',
+      external_id: 'workflow.yml-0',
       started_at: expect.any(String),
       completed_at: expect.any(String),
       conclusion: 'failure',

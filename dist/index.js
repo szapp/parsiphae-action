@@ -87277,14 +87277,13 @@ async function workflow() {
     // Only for completed check runs
     if (github.context.eventName !== 'check_run' || github.context.payload.action !== 'completed')
         return false;
-    const octokit = github.getOctokit(core.getInput('cleanup-token'));
-    const checkName = core.getInput('check-name');
     // Check if the triggering check run is the correct one
-    if (!github.context.payload.check_run.name.startsWith(checkName)) {
+    if (github.context.payload.check_run.external_id !== `${github.context.workflow}-0`) {
         // This workflow run here will then be also deleted by the correctly triggered run
-        core.setFailed(`This action is only intended to be run on the "${checkName}" check run`);
+        core.setFailed('This action is only intended to be run on the first check run of the workflow only');
         return true;
     }
+    const octokit = github.getOctokit(core.getInput('cleanup-token'));
     // Let all running workflows finish
     let status;
     do {
@@ -87561,6 +87560,7 @@ For more details on Parsiphae, see [Lehona/Parsiphae@${parVer}](${link}).`;
                 ...github.context.repo,
                 name: checkRunName,
                 head_sha: github.context.sha,
+                external_id: `${github.context.workflow}-${idx}`,
                 started_at: startedAt.toISOString(),
                 completed_at: new Date().toISOString(),
                 conclusion: numErr ? 'failure' : 'success',

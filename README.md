@@ -91,7 +91,8 @@ To remove the additional status check, call this GitHub Action with an authentic
 For more details the issue, see [here](https://github.com/peter-murray/workflow-application-token-action#readme).
 Always leave the additional input `cleanup-token` at its default.
 
-Nevertheless, this is a optional cosmetic enhancement and this GitHub action works fine without.
+> [!Tip]
+> This is only an optional cosmetic enhancement and this GitHub action works fine without.
 
 ```yaml
 name: scripts
@@ -112,7 +113,7 @@ permissions:
 jobs:
   parsiphae:
     name: Run Parsiphae on scripts
-    if: github.event_name != 'check_run' || startsWith(github.event.check_run.name, 'Parsiphae') # Adjust to check name
+    if: github.event_name != 'check_run' || github.event.check_run.external_id == join(github.workflow, '-0')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/create-github-app-token@v1
@@ -129,3 +130,6 @@ jobs:
           cache: # Optional
           token: ${{ steps.app-token.outputs.token }}
 ```
+
+> [!Note]
+> This procedure only works reasonably well if `parsiphae-action` is only called once in the workflow file.
