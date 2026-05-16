@@ -14,7 +14,7 @@ inputs:
     default: Parsiphae
   cache:
     description: Cache Parsiphae built
-    default: true
+    default: "true"
   token:
     description: Github authentication token
     default: ${{ github.token }}

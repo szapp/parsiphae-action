@@ -1,15 +1,18 @@
+import { setTimeout } from 'node:timers/promises'
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import { setTimeout } from 'timers/promises'
 
-export async function workflow(): Promise<boolean> {
+export async function workflow(wait: number = 15000): Promise<boolean> {
   // Only for completed check runs
-  if (github.context.eventName !== 'check_run' || github.context.payload.action !== 'completed') return false
+  if (github.context.eventName !== 'check_run' || github.context.payload.action !== 'completed')
+    return false
 
   // Check if the triggering check run is the correct one
   if (github.context.payload.check_run.external_id !== `${github.context.workflow}-0`) {
     // This workflow run here will then be also deleted by the correctly triggered run
-    core.setFailed('This action is only intended to be run on the first check run of the workflow only')
+    core.setFailed(
+      'This action is only intended to be run on the first check run of the workflow only',
+    )
     return true
   }
 
@@ -19,7 +22,7 @@ export async function workflow(): Promise<boolean> {
   let status: boolean
   do {
     core.info('Waiting for any workflow runs to finish...')
-    await setTimeout(15000) // Give some time for all workflows to start up
+    await setTimeout(wait) // Give some time for all workflows to start up
     const {
       data: { workflow_runs },
     } = await octokit.rest.actions.listWorkflowRunsForRepo({
@@ -51,7 +54,9 @@ export async function workflow(): Promise<boolean> {
   const workflows = workflow_runs.filter((w) => w.id !== github.context.runId)
 
   // Find success across all workflow runs (non-check runs)
-  const failure = workflows.filter((w) => w.event !== 'check_run').some((w) => ['failure', 'cancelled'].includes(w.conclusion ?? ''))
+  const failure = workflows
+    .filter((w) => w.event !== 'check_run')
+    .some((w) => ['failure', 'cancelled'].includes(w.conclusion ?? ''))
 
   // Delete all workflow runs
   core.info(`Runs to delete: ${workflows.map((w) => `${w.id}(${w.status})`).join(', ')}`)
@@ -62,8 +67,8 @@ export async function workflow(): Promise<boolean> {
           ...github.context.repo,
           run_id: w.id,
         })
-        .catch((error) => core.info(`\u001b[31m${error}\u001b[0m`))
-    )
+        .catch((error) => core.info(`\u001b[31m${error}\u001b[0m`)),
+    ),
   )
 
   // The summary of the workflow runs is unfortunately not available in the API

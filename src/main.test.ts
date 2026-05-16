@@ -1,12 +1,8 @@
-import * as core from '@actions/core'
+import fs from 'node:fs'
+import path from 'node:path'
 import * as cache from '@actions/cache'
-import * as main from '../src/main'
-import * as cleanup from '../src/cleanup'
-import path from 'path'
-import fs from 'fs'
-
-// Mock the action's main function
-const runMock = jest.spyOn(main, 'run')
+import * as core from '@actions/core'
+import { afterAll, beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Constants
 const parVer = '5cfb63ab29df99073a9fcc551d42652bdb130c74'
@@ -21,26 +17,36 @@ const workspacePath = path.dirname(__dirname)
 const binPath = path.join(workspacePath, binDirName)
 const downloadPath = path.join(workspacePath, downloadDirName)
 const cleanPaths = [cachePath, tempPath, binPath, downloadPath]
-const runnerOs = process.env['RUNNER_OS']
-const runnerArch = process.env['RUNNER_ARCH']
-process.env['RUNNER_TEMP'] = tempPath
-process.env['RUNNER_TOOL_CACHE'] = cachePath
-process.env['GITHUB_WORKSPACE'] = workspacePath
-process.env['GITHUB_STEP_SUMMARY'] = stepSummaryPath
+const runnerOs = process.env.RUNNER_OS
+const runnerArch = process.env.RUNNER_ARCH
+process.env.RUNNER_TEMP = tempPath
+process.env.RUNNER_TOOL_CACHE = cachePath
+process.env.GITHUB_WORKSPACE = workspacePath
+process.env.GITHUB_STEP_SUMMARY = stepSummaryPath
 
 // Mock the GitHub Actions libraries
-let getInputMock: jest.SpiedFunction<typeof core.getInput>
-let getBooleanInputMock: jest.SpiedFunction<typeof core.getBooleanInput>
-let setFailedMock: jest.SpiedFunction<typeof core.setFailed>
-let saveCacheMock: jest.SpiedFunction<typeof cache.saveCache>
-let restoreCacheMock: jest.SpiedFunction<typeof cache.restoreCache>
-let workflowMock: jest.SpiedFunction<typeof cleanup.workflow>
-jest.spyOn(core, 'startGroup').mockImplementation()
-jest.spyOn(core, 'endGroup').mockImplementation()
+vi.mock(import('@actions/core'), async (importOriginal) => {
+  const originalModule = await importOriginal()
+  return {
+    ...originalModule,
+  }
+})
+const getInputMock = vi.spyOn(core, 'getInput')
+const getBooleanInputMock = vi.spyOn(core, 'getBooleanInput')
+const setFailedMock = vi.spyOn(core, 'setFailed')
+
+vi.mock(import('@actions/cache'), async (importOriginal) => {
+  const originalModule = await importOriginal()
+  return {
+    ...originalModule,
+  }
+})
+const saveCacheMock = vi.spyOn(cache, 'saveCache')
+const restoreCacheMock = vi.spyOn(cache, 'restoreCache')
 
 // Mock the GitHub API
-const createCheckMock = jest.fn((_params) => ({ data: { html_url: 'https://example.com' } }))
-jest.mock('@actions/github', () => {
+const createCheckMock = vi.fn((_params) => ({ data: { html_url: 'https://example.com' } }))
+vi.mock('@actions/github', () => {
   return {
     getOctokit: (_token: string) => {
       return {
@@ -62,29 +68,37 @@ jest.mock('@actions/github', () => {
   }
 })
 
+import * as cleanup from './cleanup.js'
+import * as main from './main.js'
+
+const workflowMock = vi.spyOn(cleanup, 'workflow')
+const runMock = vi.spyOn(main, 'run')
+
 describe('action', () => {
   beforeEach(async () => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
 
-    getInputMock = jest.spyOn(core, 'getInput').mockImplementation()
-    getBooleanInputMock = jest.spyOn(core, 'getBooleanInput').mockImplementation()
-    setFailedMock = jest.spyOn(core, 'setFailed').mockImplementation()
-    saveCacheMock = jest.spyOn(cache, 'saveCache').mockImplementation()
-    restoreCacheMock = jest.spyOn(cache, 'restoreCache').mockImplementation()
-    workflowMock = jest.spyOn(cleanup, 'workflow').mockResolvedValue(false)
+    getInputMock.mockImplementation((_) => '')
+    getBooleanInputMock.mockImplementation((_) => false)
+    setFailedMock.mockImplementation(() => {})
+    saveCacheMock.mockResolvedValue(0)
+    restoreCacheMock.mockResolvedValue('')
+    workflowMock.mockResolvedValue(false)
     fs.mkdirSync(tempPath, { recursive: true })
     fs.writeFileSync(stepSummaryPath, '')
   })
 
   afterAll(async () => {
-    await Promise.allSettled(cleanPaths.map((p) => fs.rm(p, { recursive: true, force: true }, () => {})))
+    await Promise.allSettled(
+      cleanPaths.map((p) => fs.rm(p, { recursive: true, force: true }, () => {})),
+    )
   })
 
-  it('parses test file', async () => {
+  test('parses test file', async () => {
     getInputMock.mockImplementation((name) => {
       switch (name) {
         case 'file':
-          return '__tests__/data/*.d'
+          return 'test_data/*.d'
         case 'check-name':
           return 'Testing'
         case 'token':
@@ -124,7 +138,7 @@ describe('action', () => {
             end_line: 3,
             title: 'Syntax error',
             message: 'Missing semicolon',
-            path: '__tests__/data/fail.d',
+            path: 'test_data/fail.d',
             start_line: 3,
           },
         ],
@@ -160,7 +174,7 @@ describe('action', () => {
     expect(fs.readFileSync(stepSummaryPath, 'utf8')).toMatch(expectedSummary)
   }, 120000)
 
-  it('sets a failed status for invalid input file pattern', async () => {
+  test('sets a failed status for invalid input file pattern', async () => {
     const relPath = 'this is not a file'
 
     getInputMock.mockImplementation((name) => {
@@ -177,8 +191,8 @@ describe('action', () => {
     expect(setFailedMock).toHaveBeenNthCalledWith(1, `No file found matching '${relPath}'`)
   })
 
-  it('sets a failed status for an input file with wrong file extension', async () => {
-    const relPath = '__tests__/main.test.ts'
+  test('sets a failed status for an input file with wrong file extension', async () => {
+    const relPath = 'src/main.test.ts'
     const fullPath = path.resolve(path.join(workspacePath, relPath))
 
     getInputMock.mockImplementation((name) => {
@@ -195,7 +209,7 @@ describe('action', () => {
     expect(setFailedMock).toHaveBeenNthCalledWith(1, `Invalid file extension of '${fullPath}'`)
   })
 
-  it('returns early on check_run', async () => {
+  test('returns early on check_run', async () => {
     workflowMock.mockResolvedValue(true)
 
     await main.run()
