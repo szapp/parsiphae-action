@@ -263,7 +263,7 @@ For more details on Parsiphae, see [Lehona/Parsiphae@${parVer}](${link}).`
             { data: 'Test result 🔬', header: true },
             { data: 'Source 📝', header: true },
             { data: 'Errors ❌', header: true },
-            { data: 'Files #️', header: true },
+            { data: 'Files #️⃣', header: true },
             { data: 'Duration ⏰ ', header: true },
             { data: 'Details 📊', header: true },
           ],

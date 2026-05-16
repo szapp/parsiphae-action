@@ -160,7 +160,7 @@ describe('action', () => {
       },
     }
     const expectedSummary =
-      /^<h1>Testing Results<\/h1>\r?\n\r?<table><tr><th>Test result 🔬<\/th><th>Source 📝<\/th><th>Errors ❌<\/th><th>Files #️<\/th><th>Duration ⏰ <\/th><th>Details 📊<\/th><\/tr><tr><td>🔴 Fail<\/td><td>fail\.d<\/td><td>1<\/td><td>1<\/td><td>[^<]+<\/td><td><a href="https:\/\/example\.com">undefined<\/a><\/td><\/tr><tr><td>🟢 Pass<\/td><td>pass\.d<\/td><td>0<\/td><td>1<\/td><td>[^<]+<\/td><td><a href="https:\/\/example\.com">undefined<\/a><\/td><\/tr><\/table>\s*$/
+      /^<h1>Testing Results<\/h1>\r?\n\r?<table><tr><th>Test result 🔬<\/th><th>Source 📝<\/th><th>Errors ❌<\/th><th>Files #️⃣<\/th><th>Duration ⏰ <\/th><th>Details 📊<\/th><\/tr><tr><td>🔴 Fail<\/td><td>fail\.d<\/td><td>1<\/td><td>1<\/td><td>[^<]+<\/td><td><a href="https:\/\/example\.com">undefined<\/a><\/td><\/tr><tr><td>🟢 Pass<\/td><td>pass\.d<\/td><td>0<\/td><td>1<\/td><td>[^<]+<\/td><td><a href="https:\/\/example\.com">undefined<\/a><\/td><\/tr><\/table>\s*$/
 
     await main.run()
     expect(runMock).toHaveReturned()
